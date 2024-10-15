@@ -13,28 +13,45 @@ function runScript(scriptPath, envVars = {}) {
     }
 }
 
-// Step 1: Run Pod Verification Script
-if (runScript('./scripts/pod_verification.sh')) {
-    console.log('Pod verification succeeded. Proceeding to sanity test.');
-
-    // Step 2: Run Sanity Test Script only if Pod Verification was successful
-    if (runScript('./scripts/sanity_test.sh')) {
-        console.log('Sanity test passed.');
-        runScript('./scripts/notification.sh', { WORKFLOW_STATUS: 'success' });
-    } else {
-        console.error('Sanity test failed.');
-
-        // Step 3: Run Revert Script if Sanity Test fails
-        if (runScript('./scripts/revert_script.sh')) {
-            console.log('Reverted values.yaml due to sanity test failure.');
+// Function to handle Pod Verification result
+function handlePodVerification() {
+    if (fs.existsSync('/tmp/pod_verification_result.json')) {
+        const result = JSON.parse(fs.readFileSync('/tmp/pod_verification_result.json'));
+        if (result.status === 'success') {
+            console.log('Pod verification passed. Proceeding to sanity test...');
+            runScript('./scripts/sanity_test.sh');
+        } else {
+            console.error('Pod verification failed. Stopping workflow.');
+            process.exit(1);  // Stop the workflow if verification failed
         }
-
-        // Notify failure
-        runScript('./scripts/notification.sh', { WORKFLOW_STATUS: 'failure' });
+    } else {
+        console.error('Pod verification result file not found.');
+        process.exit(1);
     }
-} else {
-    console.error('Pod verification failed. Exiting workflow.');
+}
 
-    // Notify failure immediately if Pod Verification fails
-    runScript('./scripts/notification.sh', { WORKFLOW_STATUS: 'failure' });
+// Function to handle Sanity Test result
+function handleSanityTest() {
+    if (fs.existsSync('/tmp/sanity_test_result.json')) {
+        const result = JSON.parse(fs.readFileSync('/tmp/sanity_test_result.json'));
+        if (result.status === 'success') {
+            console.log('Sanity test passed. No need to revert.');
+        } else {
+            console.error('Sanity test failed. Proceeding to revert...');
+            runScript('./scripts/revert_script.sh');
+        }
+    } else {
+        console.error('Sanity test result file not found.');
+        process.exit(1);
+    }
+}
+
+// Determine which result we're handling
+if (fs.existsSync('/tmp/pod_verification_result.json')) {
+    handlePodVerification();  // Handle pod verification result
+} else if (fs.existsSync('/tmp/sanity_test_result.json')) {
+    handleSanityTest();  // Handle sanity test result
+} else {
+    console.error('No result files found. Unable to proceed.');
+    process.exit(1);
 }
