@@ -1,0 +1,47 @@
+mkdir -p ~/my-helm-chart  # Create directory for the Helm chart if it doesn't exist
+cat <<EOF > ~/my-helm-chart/values.yaml
+# Sample values.yaml for Testing
+
+replicaCount: 1
+
+image:
+  repository: myapp-repo
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "500m"
+  limits:
+    memory: "512Mi"
+    cpu: "1"
+
+env:
+  - name: DATABASE_URL
+    value: "postgres://user:password@localhost:5432/testdb"
+  - name: API_KEY
+    value: "dummyapikey12345"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: test.example.com
+      paths:
+        - /
+  tls:
+    - secretName: test-tls
+      hosts:
+        - test.example.com
+
+database:
+  host: localhost
+  port: 5432
+  user: testuser
+  password: testpass
+EOF
