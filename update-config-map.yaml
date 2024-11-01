@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: update-config-map
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: shared-workspace  # Define the workspace for sharing files between steps
+  steps:
+    - name: copy-scripts
+      image: alpine
+      script: |
+        # Copy the convert.py script from the repository to the shared workspace
+        cp /workspace/repo/convert.py /workspace/shared-workspace/
+    - name: modify-values
+      image: python:3
+      script: |
+        # Execute the convert.py script with the path to values.yaml
+        python3 /workspace/shared-workspace/convert.py /workspace/shared-workspace/values.yaml
